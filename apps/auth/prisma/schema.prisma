@@ -2,23 +2,13 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-    provider = "prisma-client-js"
+    provider        = "prisma-client-js"
     previewFeatures = ["jsonProtocol"]
 }
 
 datasource db {
-    provider = "sqlite"
-    // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
-    // Further reading:
-    // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
-    // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
+    provider = "postgresql"
     url      = env("DATABASE_URL")
-}
-
-model Example {
-    id        String   @id @default(cuid())
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
 }
 
 // Necessary for Next auth
@@ -49,13 +39,25 @@ model Session {
 }
 
 model User {
-    id            String    @id @default(cuid())
-    name          String?
-    email         String?   @unique
-    emailVerified DateTime?
-    image         String?
-    accounts      Account[]
-    sessions      Session[]
+    id                 String             @id @default(cuid())
+    cedula             String?
+    name               String?
+    apellido           String?
+    email              String?            @unique
+    emailVerified      DateTime?
+    image              String?
+    contrasena         String?
+    accounts           Account[]
+    sessions           Session[]
+    proyectos          Proyecto[]
+    tareas             Tarea[]
+    encargado          Detalle_Proyecto[] @relation(name: "encargado")
+    Detalle_Proyecto   Detalle_Proyecto?  @relation(name: "usuariosasignados", fields: [detalle_ProyectoId], references: [id])
+    detalle_ProyectoId String?
+
+    Asignador   Asignar_Tarea[] @relation(name: "asignador")
+    Asignados   Asignar_Tarea?  @relation(name: "asignados", fields: [asignadosID], references: [id])
+    asignadosID String?
 }
 
 model VerificationToken {
@@ -64,4 +66,74 @@ model VerificationToken {
     expires    DateTime
 
     @@unique([identifier, token])
+}
+
+model Proyecto {
+    id                 String             @id @default(cuid())
+    nombre             String
+    descripcion        String
+    fecha_inicio       DateTime
+    fecha_finalizacion DateTime
+    creador            User?              @relation(fields: [id_creador], references: [id])
+    id_creador         String
+    tareas             Tarea[]
+    detalle_proyecto   Detalle_Proyecto[]
+}
+
+model Detalle_Proyecto {
+    id                String    @id @default(cuid())
+    proyecto          Proyecto? @relation(fields: [proyectoId], references: [id])
+    proyectoId        String
+    encargado         User?     @relation(name: "encargado", fields: [encargadoId], references: [id])
+    usuariosasignados User[]    @relation(name: "usuariosasignados")
+    rol               String
+    disponibilidad    String
+    encargadoId       String?
+}
+
+model Tarea {
+    id                 String   @id @default(cuid())
+    nombre             String
+    descripcion        String
+    fecha_inicio       DateTime
+    fecha_finalizacion DateTime
+    estado             String
+    avance             Float
+
+    Proyecto   Proyecto? @relation(fields: [proyectoId], references: [id])
+    proyectoId String?
+
+    User   User?   @relation(fields: [userId], references: [id])
+    userId String?
+
+    Asignar_Tareas Asignar_Tarea[]
+
+    detalle_hito detalle_Hito[]
+}
+
+model Asignar_Tarea {
+    id           String @id @default(cuid())
+    Tarea        Tarea? @relation(fields: [id_tarea_per], references: [id])
+    id_tarea_per String
+
+    asignador         User?   @relation(name: "asignador", fields: [encargadoId], references: [id])
+    usuariosasignados User[]  @relation(name: "asignados")
+    encargadoId       String?
+}
+
+model Hito {
+    id           String   @id @default(cuid())
+    fecha_limite DateTime
+
+    detalle_hito detalle_Hito[]
+}
+
+model detalle_Hito {
+    id String @id @default(cuid())
+
+    hito        Hito?  @relation(fields: [id_hito_per], references: [id])
+    id_hito_per String
+
+    tarea        Tarea? @relation(fields: [id_tarea_per], references: [id])
+    id_tarea_per String
 }
